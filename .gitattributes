@@ -1,0 +1,5 @@
+data/*.csv filter=lfs diff=lfs merge=lfs -text
+data/*.json filter=lfs diff=lfs merge=lfs -text
+notebooks/cwc_scraping_test.ipynb filter=lfs diff=lfs merge=lfs -text
+notebooks/match_dashboard_template.ipynb filter=lfs diff=lfs merge=lfs -text
+notebooks/*.ipynb filter=lfs diff=lfs merge=lfs -text
