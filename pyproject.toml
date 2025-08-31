@@ -1,0 +1,35 @@
+[project]
+name = "football-analytics-tutorials"
+version = "0.1.0"
+description = "Open-source tutorials and code snippets for football analytics"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Ricardo Heredia"}
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "scipy",
+    "beautifulsoup4",
+    "selenium",
+    "requests",
+    "mplsoccer",
+    "jupyter",
+]
+
+[project.urls]
+Homepage = "https://github.com/ricardoheredia/football-analytics-tutorials"
+Repository = "https://github.com/ricardoheredia/football-analytics-tutorials"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "jupyter",
+    "ipykernel",
+]
