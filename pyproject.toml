@@ -1,35 +1,35 @@
 [project]
 name = "football-analytics-tutorials"
-version = "0.1.0"
-description = "Open-source tutorials and code snippets for football analytics"
+version = "2.0.0"
+description = "Match report skill + tutorials for football analytics (WhoScored + FotMob)"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
     {name = "Ricardo Heredia"}
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "numpy",
     "pandas",
     "matplotlib",
     "scipy",
-    "beautifulsoup4",
-    "selenium",
     "requests",
     "mplsoccer",
+]
+
+[project.optional-dependencies]
+scrape = [
+    "playwright",  # headless Chromium for WhoScored (bot-walled)
+]
+dev = [
     "jupyter",
+    "ipykernel",
 ]
 
 [project.urls]
-Homepage = "https://github.com/ricardoheredia/football-analytics-tutorials"
-Repository = "https://github.com/ricardoheredia/football-analytics-tutorials"
+Homepage = "https://github.com/ricardoherediaj/football-analytics-tutorials"
+Repository = "https://github.com/ricardoherediaj/football-analytics-tutorials"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.uv]
-dev-dependencies = [
-    "jupyter",
-    "ipykernel",
-]

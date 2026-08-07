@@ -1,3 +1,15 @@
 # Working and temporary files
 Untitled-*
 error.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.venv-test/
+*.egg-info/
+
+# Scraped match data / reports (generated, not committed)
+data_out/
+report/
+scrape.log
