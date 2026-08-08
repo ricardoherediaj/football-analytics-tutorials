@@ -1,7 +1,7 @@
 [project]
 name = "football-match-report"
-version = "2.0.0"
-description = "Post-match team report from WhoScored + FotMob: scrape, analyze, render."
+version = "2.2.0"
+description = "Post-match team + player reports from WhoScored + FotMob: scrape, analyze, render."
 readme = "README.md"
 license = "MIT"
 authors = [

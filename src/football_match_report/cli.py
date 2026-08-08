@@ -12,6 +12,7 @@ import pandas as pd
 
 from .core import events as core_events
 from .io import fotmob, whoscored
+from .viz import player_report
 from .viz import report as report_viz
 
 
@@ -127,6 +128,20 @@ def cmd_render(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# players
+# --------------------------------------------------------------------------- #
+def cmd_players(args) -> int:
+    """Top Players dashboard + per-player dashboards + player_stats.csv."""
+    data_dir = Path(args.data)
+    out_dir = Path(args.out)
+    players = [n.strip() for n in args.players.split(",") if n.strip()] if args.players else None
+    paths = player_report.save_player_reports(data_dir, out_dir, players)
+    for p in paths:
+        print(f"✅ {p}")
+    return 0
+
+
+# --------------------------------------------------------------------------- #
 # main
 # --------------------------------------------------------------------------- #
 def main(argv=None) -> int:
@@ -144,6 +159,15 @@ def main(argv=None) -> int:
     p_render.add_argument("--data", default="data", help="bundle directory (default: ./data)")
     p_render.add_argument("--out", default="report", help="output directory (default: ./report)")
     p_render.set_defaults(func=cmd_render)
+
+    p_players = sub.add_parser(
+        "players", help="render the Top Players dashboard + per-player dashboards + player_stats.csv"
+    )
+    p_players.add_argument("--data", default="data", help="bundle directory (default: ./data)")
+    p_players.add_argument("--out", default="report", help="output directory (default: ./report)")
+    p_players.add_argument("--players", default=None,
+                           help="comma-separated player names (default: all starters)")
+    p_players.set_defaults(func=cmd_players)
 
     args = ap.parse_args(argv)
     return args.func(args)

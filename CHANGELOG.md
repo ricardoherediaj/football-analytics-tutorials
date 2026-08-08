@@ -4,6 +4,30 @@ All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] — 2026-08-08
+
+### Added
+- Player-level reports via `football-match-report players`:
+  - `match_report_3.png` — 4x3 **Top Players dashboard**: top ball
+    progressor pass maps, passes received by the center-forward, top
+    defender actions, goalkeeper pass maps, plus Top10 stacked bar
+    charts (ball progressors, shot-sequence involvement, defenders,
+    threat creators via xT).
+  - `players/<name>.png` — per-player 2x3 dashboards (all starters by
+    default): pass map, carries & take-ons, shot map with xG/xGOT,
+    passes received, defensive actions, touches heatmap + distance
+    covered.
+  - `player_stats.csv` — merged wide per-player stat table (passing,
+    carrying, shooting, pass receiving, defensive, touches).
+- `core/player_stats.py`: pure, testable per-player stat functions
+  (leaderboards + six stat facets + playing time + shot frame builder
+  with FotMob xG and WhoScored fallback).
+- `viz/player_top.py` + `viz/player_individual.py` + `viz/player_report.py`
+  — chart modules and assembly following the blueprint layout, adapted
+  to the repo's black theme / team colors.
+- 14 new offline tests (leaderboards, per-player stats, figure builds,
+  CSV export) — suite now 29 tests.
+
 ## [2.0.0] — 2026-08-08
 
 ### Added

@@ -1,7 +1,7 @@
 ---
 name: football-match-report
-description: Build a post-match team report (scrape + 24-chart dashboard) from a WhoScored URL.
-version: 2.0.0
+description: Build post-match team + player reports (24-chart dashboard, per-player dashboards, stats CSV) from a WhoScored URL.
+version: 2.2.0
 author: Ricardo Heredia (ricardoherediaj), Hermes Agent
 license: MIT
 platforms: [linux, macos]
@@ -36,6 +36,13 @@ Two commands, end to end:
 ```bash
 python scripts/scrape_match.py "<whoscored-url>" --out ./data
 python scripts/render_report.py --data ./data --out ./report
+```
+
+A third command adds the player-level reports (Top Players dashboard,
+per-player dashboards, per-player stats CSV):
+
+```bash
+uv run football-match-report players --data ./data --out ./report
 ```
 
 ## When to Use
@@ -89,7 +96,29 @@ Produces two 4x3 report figures:
   entries, Zone 14 & half-spaces, crosses, pass-end-zone heatmaps, high
   turnovers, chance-creating zones, congestion map.
 
-### 3. As a CLI (same thing)
+### 3. Player-level reports (offline, optional)
+
+```bash
+uv run football-match-report players --data ./data --out ./report
+# or, only specific players:
+uv run football-match-report players --data ./data --out ./report \
+  --players "Lamine Yamal,Mikel Oyarzabal"
+```
+
+Produces:
+
+- `report/match_report_3.png` — **Top Players dashboard** (4x3): top ball
+  progressor pass maps, passes received by the center-forward, top
+  defender actions, goalkeeper pass maps + Top10 stacked bar charts
+  (ball progressors, shot-sequence involvement, defenders, threat
+  creators via xT).
+- `report/players/<name>.png` — one **2x3 individual dashboard** per
+  starter (or the names in `--players`): pass map, carries & take-ons,
+  shot map with xG/xGOT, passes received, defensive actions, touches
+  heatmap with distance covered.
+- `report/player_stats.csv` — merged wide per-player stat table.
+
+### 4. As a CLI (same thing)
 
 ```bash
 uv run football-match-report scrape "<whoscored-url>" --out ./data
@@ -102,6 +131,8 @@ uv run football-match-report render --data ./data --out ./report
 |------|---------|
 | Scrape any match (WhoScored + FotMob auto-merged) | `python scripts/scrape_match.py "<whoscored-url>" --out ./data` |
 | Render both report pages | `python scripts/render_report.py --data ./data --out ./report` |
+| Render player-level reports (top players + per player + CSV) | `uv run football-match-report players --data ./data --out ./report` |
+| Limit per-player dashboards to specific names | `... players --players "Lamine Yamal,Mikel Oyarzabal"` |
 | Explicit FotMob id | `... --fotmob-id 4685754` |
 | FotMob-only reduced bundle (no browser) | `python scripts/scrape_match.py --fotmob-id 4685754 --out ./data` |
 | Skip browser (reuse cache) | `... --no-browser` |
@@ -143,6 +174,20 @@ uv run football-match-report render --data ./data --out ./report
   Zone 14 & half-space passes, crosses (acc./unacc.), pass-end-zone
   heatmaps, high turnovers (led to goal/shot), chance-creating zones
   (key passes = violet, assists = green), congestion map.
+- **Top Players dashboard** (figure 3) — top ball progressor pass maps
+  (all/progressive/key/assist passes + progressive carries), passes
+  received by the center-forward, top defender action maps, GK pass maps
+  (open play vs goal kicks/free kicks), Top10 stacked bars: ball
+  progressors, shot-sequence involvement, defenders, xT threat creators.
+- **Individual player dashboard** — pass map (accuracy, progressive,
+  chances created, assists, final third, penalty box, crosses, longballs,
+  xT), carries & take-ons (progressive, led to shot/goal, box entries,
+  dispossessed, success rate), shot map with xG/xGOT (FotMob) and
+  inside/outside box split, passes received (final third, box,
+  progressive, cutbacks, ball retention, most passes from), defensive
+  actions (tackles won, dribbles past, recoveries, blocks, aerials,
+  possession wins per third), touches heatmap with distance covered and
+  area covered.
 
 See `references/metrics.md` for definitions and interpretation notes.
 
@@ -165,6 +210,15 @@ See `references/metrics.md` for definitions and interpretation notes.
   shot/xG/momentum/GK panels degrade.
 - **Player names in passing networks** come from WhoScored's
   `playerIdNameDictionary`; without `matchdict.json` only counts are shown.
+- **Player-level panels need real names to match.** FotMob shot xG/xGOT
+  match on `playerName` (fallback: `shortName`); if a player's name
+  differs between sources, xG shows 0. Without `shots.csv` the individual
+  shot map falls back to WhoScored events (positions but no xG).
+- **Only players who touched the ball** appear in `player_stats.csv` and
+  the per-player dashboards — bench/roster players with zero events are
+  skipped by design.
+- **Players with <3 touches** get a 0 `Total_Area_Covered` (convex hull
+  guard) instead of crashing the heatmap.
 - Be polite: scrape one match at a time; don't loop over hundreds of URLs.
 
 ## Verification

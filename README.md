@@ -7,6 +7,12 @@ blueprint.
 
 ![Match report 1](docs/match_report_1_spain_argentina_wc2026.png)
 
+Player-level dashboards (one 2x3 page per starter, from the same bundle):
+
+![Lamine Yamal — Spain 1-0 Argentina, WC 2026 final](docs/player_lamine_yamal_wc2026.png)
+
+![Lionel Messi — Spain 1-0 Argentina, WC 2026 final](docs/player_lionel_messi_wc2026.png)
+
 ## What it does
 
 Given **any WhoScored match URL**, the pipeline:
@@ -21,6 +27,11 @@ Given **any WhoScored match URL**, the pipeline:
    defensive blocks, goalkeeper saves, progressive passes/carries,
    xT momentum, match stats, final-third entries, box entries, Zone 14,
    crosses, pass-end zones, high turnovers, chance creation, congestion.
+4. **Renders player-level reports**: a 4x3 Top Players dashboard (top
+   progressor pass maps, passes received, top defender actions, GK pass
+   maps, Top10 bar charts) plus a 2x3 dashboard per starter (pass map,
+   carries & take-ons, shot map with xG/xGOT, passes received, defensive
+   actions, touches heatmap) and a merged `player_stats.csv`.
 
 No API keys, no manual Selenium sessions, no rotating tokens, no hardcoded
 team ids — works for any match (Club World Cup, Premier League, etc.).
@@ -41,10 +52,20 @@ uv run football-match-report scrape \
 
 # 4. Render the two report figures (offline)
 uv run football-match-report render --data ./data --out ./report
+
+# 5. Render the player-level reports (offline)
+uv run football-match-report players --data ./data --out ./report
 ```
 
 Outputs: `report/match_report_1.png` (team report) +
-`report/match_report_2.png` (zones report).
+`report/match_report_2.png` (zones report) +
+`report/match_report_3.png` (Top Players dashboard) +
+`report/players/<name>.png` (per-starter dashboards) +
+`report/player_stats.csv` (per-player stat table).
+
+Pass `--players "Lamine Yamal,Mikel Oyarzabal"` to limit the per-player
+dashboards to specific names (the Top Players dashboard and CSV are
+always rendered).
 
 ## Repository layout
 
@@ -52,6 +73,7 @@ Outputs: `report/match_report_1.png` (team report) +
 src/football_match_report/     # the package
   core/events.py               # event pipeline: carries, possession, xT, UEFA scaling
   core/stats.py                # match/shot statistics
+  core/player_stats.py         # per-player stats: leaderboards + 6 facets + playing time
   io/whoscored.py              # Playwright scraper
   io/fotmob.py                 # FotMob API (id resolve, matchDetails)
   viz/pass_network.py          # passing networks (shirt numbers, line heights)
@@ -61,8 +83,11 @@ src/football_match_report/     # the package
   viz/momentum.py              # xT momentum chart
   viz/match_stats.py           # stats bars
   viz/zones.py                 # 8 advanced zone charts
+  viz/player_top.py            # Top Players dashboard (4x3 figure 3)
+  viz/player_individual.py     # per-player 2x3 dashboards
+  viz/player_report.py         # player-level assembly + CSV export
   viz/report.py                # 2x 4x3 figure assembly
-  cli.py                       # scrape + render commands
+  cli.py                       # scrape / render / players commands
 skills/football-match-report/  # installable agent skill (SKILL.md + thin wrappers)
 tests/                         # offline unit + render tests (synthetic match data)
 docs/                          # sample report images

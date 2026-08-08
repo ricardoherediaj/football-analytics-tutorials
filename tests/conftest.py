@@ -140,4 +140,18 @@ def synthetic_bundle(tmp_path_factory, synthetic_matchdict) -> Path:
     (out / "meta.json").write_text(json.dumps(meta))
     grid = np.array([[0.006, 0.007, 0.008, 0.009, 0.011, 0.012, 0.014, 0.017, 0.021, 0.027, 0.034, 0.037]] * 8)
     pd.DataFrame(grid).to_csv(out / "xt_grid.csv", index=False, header=False)
+
+    # minimal FotMob shot map (player-level xG/xGOT panels)
+    shots = pd.DataFrame([
+        {"playerName": "P1A0", "shortName": "P1A0", "x": 96.0, "y": 34.0, "eventType": "Goal",
+         "expectedGoals": 0.5, "expectedGoalsOnTarget": 0.6, "isBlocked": False,
+         "isFromInsideBox": True, "situation": "RegularPlay", "team_id": 100},
+        {"playerName": "P1A0", "shortName": "P1A0", "x": 90.0, "y": 28.0, "eventType": "Miss",
+         "expectedGoals": 0.1, "expectedGoalsOnTarget": 0.0, "isBlocked": False,
+         "isFromInsideBox": True, "situation": "RegularPlay", "team_id": 100},
+        {"playerName": "P2A0", "shortName": "P2A0", "x": 15.0, "y": 34.0, "eventType": "Goal",
+         "expectedGoals": 0.3, "expectedGoalsOnTarget": 0.4, "isBlocked": False,
+         "isFromInsideBox": True, "situation": "RegularPlay", "team_id": 200},
+    ])
+    shots.to_csv(out / "shots.csv", index=False)
     return out
