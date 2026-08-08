@@ -11,6 +11,8 @@ __pycache__/
 
 # Scraped match data / reports (generated, not committed)
 data_out/
+data_*/
 report/
 report_v*/
+report_*/
 scrape.log
