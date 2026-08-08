@@ -94,12 +94,13 @@ def shot_map(ax, df, home, away, hcol, acol, fotmob_xg: dict | None = None) -> l
         ax.barh(y, aw, height=5, left=start_x, color=acol)
 
     for i, (y, title) in enumerate(zip(y_positions, titles)):
-        ax.text(52.5, y, title, color=config.BG_COLOR, fontsize=17, ha="center", va="center",
+        # white text with black outline so labels stay readable over team-color bars
+        ax.text(52.5, y, title, color=config.LINE_COLOR, fontsize=17, ha="center", va="center",
                 fontweight="bold", path_effects=path_eff())
         ax.text(41.5, y, str(h_vals[i]), color=config.LINE_COLOR, fontsize=17,
-                ha="right", va="center", fontweight="bold")
+                ha="right", va="center", fontweight="bold", path_effects=path_eff())
         ax.text(63.5, y, str(a_vals[i]), color=config.LINE_COLOR, fontsize=17,
-                ha="left", va="center", fontweight="bold")
+                ha="left", va="center", fontweight="bold", path_effects=path_eff())
 
     for s in ax.spines.values():
         s.set_visible(False)
@@ -114,6 +115,23 @@ def shot_map(ax, df, home, away, hcol, acol, fotmob_xg: dict | None = None) -> l
         {"Team_Name": home, **stats[home]},
         {"Team_Name": away, **stats[away]},
     ]
+
+
+def jitter_goal_positions(out: pd.DataFrame, seed: int = 42) -> pd.DataFrame:
+    """Spread near-duplicate goal-mouth positions by a tiny seeded jitter.
+
+    WhoScored uses goalMouthZ=19.0 as a "height not tracked" placeholder, so
+    several shots can map to identical (gx, gy) and stack perfectly on top of
+    each other in the goal view. Rows that share a rounded position get a
+    uniform jitter of +/-1.2 (goal-mouth units) so every shot stays visible.
+    """
+    rng = np.random.default_rng(seed)
+    key = out["gx"].round(0).astype(str) + "|" + out["gy"].round(0).astype(str)
+    for _, sub in out.groupby(key.values):
+        if len(sub) > 1:
+            out.loc[sub.index, "gx"] += rng.uniform(-1.2, 1.2, len(sub))
+            out.loc[sub.index, "gy"] += rng.uniform(-1.2, 1.2, len(sub))
+    return out
 
 
 def goalpost(ax, df, home, away, hcol, acol) -> list[dict]:
@@ -133,7 +151,10 @@ def goalpost(ax, df, home, away, hcol, acol) -> list[dict]:
         out = pd.DataFrame(index=df_side.index)
         out["gx"] = 7.5 + np.clip(pd.to_numeric(df_side["goalMouthY"], errors="coerce") / 100, 0, 1) * 90
         out["gy"] = base_y + np.clip(pd.to_numeric(df_side["goalMouthZ"], errors="coerce") / 100, 0, 1) * 30
-        return out.dropna()
+        out = out.dropna()
+        # WhoScored uses Z=19.0 as a "height not tracked" placeholder, so several
+        # shots can map to identical positions -> spread them with seeded jitter.
+        return jitter_goal_positions(out)
 
     h_norm = norm_goal(hShotsdf, 0.0)    # home shots -> bottom frame (away GK)
     a_norm = norm_goal(aShotsdf, 38.0)   # away shots -> top frame (home GK)

@@ -290,7 +290,8 @@ def build_master_df(matchdict: dict, xt_grid: np.ndarray) -> pd.DataFrame:
     df["y"] = df["y"] * config.Y_SCALE
     df["endX"] = df["endX"] * config.X_SCALE
     df["endY"] = df["endY"] * config.Y_SCALE
-    df["goalMouthY"] = df["goalMouthY"] * config.Y_SCALE
+    # NOTE: goalMouthY/Z stay as 0-100 percentages of the goal mouth — they
+    # are NOT pitch coordinates and must not be scaled.
 
     # Player info
     dfp = players_df.copy()
@@ -300,6 +301,10 @@ def build_master_df(matchdict: dict, xt_grid: np.ndarray) -> pd.DataFrame:
         if col in dfp.columns:
             dfp = dfp.drop(columns=[col])
     df = df.merge(dfp, on="playerId", how="left")
+    # WhoScored only sets isFirstEleven on starters; subs get NaN -> treat as
+    # False (object dtype from the merge; cast to bool so `== 1` / truthiness
+    # checks in the viz layer are unambiguous).
+    df["isFirstEleven"] = df["isFirstEleven"].fillna(False).astype(bool)
 
     df["qualifiers"] = df["qualifiers"].astype(str)
 

@@ -48,6 +48,17 @@ def synthetic_matchdict() -> dict:
             "isTouch": True, "qualifiers": quals, "expandedMinute": minute,
         })
 
+    # Sub touches: one pass each for the subbed-in players (isFirstEleven absent)
+    for (team, minute, x, y, ex, ey) in [(1, 11, 55, 40, 65, 45), (2, 12, 35, 40, 25, 45)]:
+        events.append({
+            "id": len(events) + 1, "eventId": len(events) + 1, "minute": minute, "second": 0,
+            "teamId": team, "playerId": 1000 + team * 100 + 4,
+            "type": {"displayName": "Pass"}, "outcomeType": {"displayName": "Successful"},
+            "period": {"displayName": "FirstHalf"},
+            "x": float(x), "y": float(y), "endX": float(ex), "endY": float(ey),
+            "isTouch": True, "qualifiers": [], "expandedMinute": minute,
+        })
+
     # Shots: home goal at 12', home miss at 14', away goal at 20'
     shot_specs = [
         (1, 12, 98, 34, "Goal", [{"type": {"displayName": "BigChance"}}]),
@@ -67,30 +78,37 @@ def synthetic_matchdict() -> dict:
             "goalMouthY": 40.0, "goalMouthZ": 20.0,
         })
 
-    # Defensive actions
-    for (team, minute, x, y, etype) in [
-        (1, 15, 40, 30, "Tackle"), (1, 16, 35, 40, "Interception"),
-        (2, 17, 60, 30, "Clearance"), (1, 18, 50, 20, "BallRecovery"),
+    # Defensive actions (one routed through a sub, id +4, for the square marker)
+    for (team, minute, x, y, etype, pid) in [
+        (1, 15, 40, 30, "Tackle", 1100), (1, 16, 35, 40, "Interception", 1104),
+        (2, 17, 60, 30, "Clearance", 1200), (1, 18, 50, 20, "BallRecovery", 1100),
     ]:
         events.append({
             "id": len(events) + 1, "eventId": len(events) + 1, "minute": minute, "second": 0,
-            "teamId": team, "playerId": 1000 + team * 100,
+            "teamId": team, "playerId": pid,
             "type": {"displayName": etype}, "outcomeType": {"displayName": "Successful"},
             "period": {"displayName": "FirstHalf"},
             "x": float(x), "y": float(y), "endX": float(x), "endY": float(y),
             "isTouch": True, "qualifiers": [], "expandedMinute": minute,
         })
 
-    def players(team_id, n):
-        return [
+    def players(team_id, n, n_subs=0):
+        squad = [
             {"playerId": 1000 + team_id * 100 + i, "name": f"P{team_id}A{i}", "shirtNo": 1 + i,
              "position": "GK" if i == 0 else ("DC" if i == 1 else "MC"), "isFirstEleven": True}
             for i in range(n)
         ]
+        # Subs come from WhoScored WITHOUT the isFirstEleven key -> NaN after merge
+        squad += [
+            {"playerId": 1000 + team_id * 100 + n + i, "name": f"P{team_id}B{i}", "shirtNo": 20 + i,
+             "position": "MC"}
+            for i in range(n_subs)
+        ]
+        return squad
 
     return {
-        "home": {"name": "Hometeam", "teamId": 1, "players": players(1, 4)},
-        "away": {"name": "Awayteam", "teamId": 2, "players": players(2, 4)},
+        "home": {"name": "Hometeam", "teamId": 1, "players": players(1, 4, n_subs=1)},
+        "away": {"name": "Awayteam", "teamId": 2, "players": players(2, 4, n_subs=1)},
         "events": events,
         "playerIdNameDictionary": {},
         "score": "2 : 1",

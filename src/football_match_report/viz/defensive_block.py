@@ -47,9 +47,13 @@ def defensive_block(ax, average_locs_and_count_df, team_actions, team_name, col,
 
     cmap = LinearSegmentedColormap.from_list("team", [config.BG_COLOR, col], N=500)
 
-    # KDE heatmap of the team's defensive actions
+    # KDE heatmap of the team's defensive actions. NOTE: the blueprint uses
+    # levels=5000, but that crashes on clustered data ("Contour levels must be
+    # increasing", seaborn/matplotlib quantile duplication) — real defensive
+    # actions are clustered, so we use 100 levels: visually identical filled
+    # gradient, robust on any sample size.
     if len(team_df) and len(team_actions):
-        pitch.kdeplot(team_actions["x"], team_actions["y"], ax=ax, fill=True, levels=5000,
+        pitch.kdeplot(team_actions["x"], team_actions["y"], ax=ax, fill=True, levels=100,
                       thresh=0.02, cut=4, cmap=cmap, zorder=1)
 
     # Player nodes: circle = starter, square = sub; shirt number inside

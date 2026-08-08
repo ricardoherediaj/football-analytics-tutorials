@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 
+from football_match_report import config
 from football_match_report.core import events as core_events
 from football_match_report.core import stats as core_stats
 
@@ -98,3 +99,37 @@ def test_shot_stats(synthetic_matchdict):
     assert stats[away]["goals"] == 1
     assert stats[home]["shots"] == 2
     assert stats[away]["shots"] == 3
+
+
+# --- Regression tests: fix/visual-polish (v2.1.0) ---
+
+def test_subs_get_is_first_eleven_false(synthetic_matchdict):
+    """Subs arrive from WhoScored without isFirstEleven (NaN) -> must be False,
+    so chart markers render as squares, not circles."""
+    xt = core_events.load_xt_grid("src/football_match_report/data/xt_grid.csv")
+    df = core_events.build_master_df(synthetic_matchdict, xt)
+    assert df["isFirstEleven"].isna().sum() == 0, "no NaN may survive the merge"
+    assert df["isFirstEleven"].dtype == bool
+    # the subbed-in players (id +4) must be flagged False
+    sub_rows = df[df["playerId"].isin([1104, 1204])]
+    assert len(sub_rows) >= 1
+    assert sub_rows["isFirstEleven"].sum() == 0
+    # starters remain True
+    starter_rows = df[df["playerId"].isin([1100, 1200])]
+    assert starter_rows["isFirstEleven"].sum() == len(starter_rows)
+
+
+def test_goal_mouth_coords_not_pitch_scaled(synthetic_matchdict):
+    """goalMouthY/Z are 0-100 goal-mouth percentages, NOT pitch coordinates —
+    they must survive build_master_df unscaled (previously *0.68 collapsed
+    every shot into one column of the goal view)."""
+    xt = core_events.load_xt_grid("src/football_match_report/data/xt_grid.csv")
+    df = core_events.build_master_df(synthetic_matchdict, xt)
+    shots = df[df["type"].isin(config.SHOT_TYPES) & df["goalMouthY"].notna()]
+    assert len(shots) >= 1
+    # fixture uses goalMouthY=40.0 -> must stay 40.0, not 40*0.68=27.2
+    assert (shots["goalMouthY"] == 40.0).sum() == len(shots)
+    assert (shots["goalMouthZ"] == 20.0).sum() == len(shots)
+    # and they map across the full goal mouth (7.5..97.5), not one column
+    gx = 7.5 + np.clip(shots["goalMouthY"].astype(float) / 100, 0, 1) * 90
+    assert (gx == 43.5).sum() == len(shots)  # 40% -> 43.5 (dead center-ish)
