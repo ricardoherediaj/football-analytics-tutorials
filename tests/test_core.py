@@ -1,0 +1,100 @@
+"""Core pipeline tests: flattening, carries, xT, possession chains, stats."""
+
+import numpy as np
+import pandas as pd
+
+from football_match_report.core import events as core_events
+from football_match_report.core import stats as core_stats
+
+
+def test_flatten_events_columns(synthetic_matchdict):
+    df = core_events.flatten_events(synthetic_matchdict)
+    assert "type" in df.columns
+    assert df["type"].isin(["Pass", "Goal"]).any()
+    assert "cumulative_mins" in df.columns
+    assert df["cumulative_mins"].isna().sum() == 0
+
+
+def test_carries_synthesized():
+    """A carry is synthesized between two same-team touches within a short window."""
+    events = pd.DataFrame([
+        {"eventId": 1, "minute": 10, "second": 0, "expandedMinute": 10, "period": 1,
+         "teamId": 1, "playerId": 11, "type": "Pass", "outcomeType": "Successful",
+         "x": 50, "y": 50, "endX": 65, "endY": 55, "isTouch": True,
+         "qualifiers": "[]", "cumulative_mins": 10.0},
+        # gap between event 1's end (65,55) and event 2's start (70,50) -> a dribble
+        {"eventId": 2, "minute": 10, "second": 3, "expandedMinute": 10, "period": 1,
+         "teamId": 1, "playerId": 11, "type": "Pass", "outcomeType": "Successful",
+         "x": 70, "y": 50, "endX": 80, "endY": 45, "isTouch": True,
+         "qualifiers": "[]", "cumulative_mins": 10.05},
+        {"eventId": 3, "minute": 10, "second": 30, "expandedMinute": 10, "period": 1,
+         "teamId": 2, "playerId": 21, "type": "Pass", "outcomeType": "Successful",
+         "x": 40, "y": 40, "endX": 30, "endY": 35, "isTouch": True,
+         "qualifiers": "[]", "cumulative_mins": 10.5},
+    ])
+    with_carries = core_events.insert_ball_carries(events)
+    assert "Carry" in with_carries["type"].values
+    carry = with_carries[with_carries["type"] == "Carry"]
+    dx = carry["endX"] - carry["x"]
+    dy = carry["endY"] - carry["y"]
+    assert (np.sqrt(dx**2 + dy**2) >= 3.0).all()
+
+
+def test_xt_assignment(synthetic_matchdict):
+    xt = core_events.load_xt_grid("src/football_match_report/data/xt_grid.csv")
+    df = core_events.build_master_df(synthetic_matchdict, xt)
+    assert "xT" in df.columns
+    assert df["xT"].notna().sum() > 0
+    # xT of a successful pass can be positive or negative but finite
+    assert np.isfinite(df["xT"].dropna()).all()
+
+
+def test_uefa_scaling(synthetic_matchdict):
+    xt = core_events.load_xt_grid("src/football_match_report/data/xt_grid.csv")
+    df = core_events.build_master_df(synthetic_matchdict, xt)
+    assert df["x"].max() <= 105.5
+    assert df["y"].max() <= 68.5
+    assert df["x"].min() >= 0
+    assert df["y"].min() >= 0
+
+
+def test_possession_chains(synthetic_matchdict):
+    xt = core_events.load_xt_grid("src/football_match_report/data/xt_grid.csv")
+    df = core_events.build_master_df(synthetic_matchdict, xt)
+    assert "possession_id" in df.columns
+    assert df["possession_id"].notna().all()
+    assert df["possession_team"].notna().all()
+
+
+def test_progressive_pass_filter(synthetic_matchdict):
+    xt = core_events.load_xt_grid("src/football_match_report/data/xt_grid.csv")
+    df = core_events.build_master_df(synthetic_matchdict, xt)
+    home = synthetic_matchdict["home"]["name"]
+    prog = df[(df["teamName"] == home) & (df["prog_pass"] >= 9.11)]
+    # the home team has an assist pass ending at x=102 -> definitely progressive
+    assert len(prog) >= 1
+
+
+def test_match_stats_structure(synthetic_matchdict):
+    xt = core_events.load_xt_grid("src/football_match_report/data/xt_grid.csv")
+    df = core_events.build_master_df(synthetic_matchdict, xt)
+    home = synthetic_matchdict["home"]["name"]
+    away = synthetic_matchdict["away"]["name"]
+    stats = core_stats.calculate_match_stats(df, home, away)
+    assert "Possession" in stats
+    assert abs(stats["Possession"]["home"] + stats["Possession"]["away"] - 100) < 1
+    assert "PPDA" in stats
+    assert "Field Tilt" in stats
+
+
+def test_shot_stats(synthetic_matchdict):
+    xt = core_events.load_xt_grid("src/football_match_report/data/xt_grid.csv")
+    df = core_events.build_master_df(synthetic_matchdict, xt)
+    home = synthetic_matchdict["home"]["name"]
+    away = synthetic_matchdict["away"]["name"]
+    stats = core_stats.shot_stats_from_events(df, home, away)
+    # home scored 1 goal (big chance), away scored 1
+    assert stats[home]["goals"] == 1
+    assert stats[away]["goals"] == 1
+    assert stats[home]["shots"] == 2
+    assert stats[away]["shots"] == 3

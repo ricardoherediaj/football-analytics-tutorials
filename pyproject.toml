@@ -1,35 +1,57 @@
 [project]
-name = "football-analytics-tutorials"
+name = "football-match-report"
 version = "2.0.0"
-description = "Match report skill + tutorials for football analytics (WhoScored + FotMob)"
+description = "Post-match team report from WhoScored + FotMob: scrape, analyze, render."
 readme = "README.md"
-license = {file = "LICENSE"}
+license = "MIT"
 authors = [
-    {name = "Ricardo Heredia"}
+    {name = "Ricardo Heredia (ricardoherediaj)"},
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "numpy",
-    "pandas",
-    "matplotlib",
-    "scipy",
-    "requests",
-    "mplsoccer",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+    "scipy>=1.10",
+    "requests>=2.31",
+    "mplsoccer>=1.2",
 ]
 
 [project.optional-dependencies]
 scrape = [
-    "playwright",  # headless Chromium for WhoScored (bot-walled)
+    "playwright>=1.40",  # headless Chromium for WhoScored (bot-walled)
 ]
 dev = [
-    "jupyter",
-    "ipykernel",
+    "pytest>=8.0",
+    "ruff>=0.5",
+    "pytest-cov>=5.0",
 ]
 
+[project.scripts]
+football-match-report = "football_match_report.cli:main"
+
 [project.urls]
-Homepage = "https://github.com/ricardoherediaj/football-analytics-tutorials"
 Repository = "https://github.com/ricardoherediaj/football-analytics-tutorials"
+Homepage = "https://github.com/ricardoherediaj/football-analytics-tutorials"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/football_match_report"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/football_match_report/data" = "football_match_report/data"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501"]
