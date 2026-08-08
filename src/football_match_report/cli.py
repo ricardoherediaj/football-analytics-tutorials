@@ -52,6 +52,12 @@ def _write_bundle(out: Path, matchdict: dict | None, fotmob_payload: dict | None
     if fotmob_payload is not None and fm_id is not None:
         meta.update(fotmob.meta_from_fotmob(fotmob_payload, fm_id))
         meta["match_id_fotmob"] = fm_id
+        # persist the shot map (xG/xGOT) for the render step
+        fotmob.shots_to_df(fotmob_payload).to_csv(out / "shots.csv", index=False)
+        # meta_from_fotmob blanks who_scored_id; restore from the matchdict
+        if matchdict is not None:
+            meta["teams"]["home"]["who_scored_id"] = matchdict["home"]["teamId"]
+            meta["teams"]["away"]["who_scored_id"] = matchdict["away"]["teamId"]
     meta["source_url"] = url
     (out / "meta.json").write_text(json.dumps(meta, indent=2))
 

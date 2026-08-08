@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+import pandas as pd
 import requests
 
 UA = (
@@ -57,6 +58,19 @@ def parse_fotmob_url(url: str) -> int | None:
         return int(m.group(1))
     m = re.search(r"/match(?:es)?/(\d+)", url)
     return int(m.group(1)) if m else None
+
+
+def shots_to_df(fotmob: dict) -> pd.DataFrame:
+    """Flatten the FotMob shot map into a DataFrame with xG and team ids."""
+    shots = (fotmob.get("content") or {}).get("shotmap", {}).get("shots", [])
+    df = pd.DataFrame(shots)
+    if len(df):
+        df["team_id"] = df["teamId"]
+        df["is_big_chance"] = df.get("situation", pd.Series(dtype=str)).eq("BigChance")
+        df["is_own_goal"] = df.get("isOwnGoal", False)
+        for col in ("x", "y"):
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
 
 
 def team_colors(fotmob: dict) -> dict:
