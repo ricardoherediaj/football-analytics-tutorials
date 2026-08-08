@@ -5,7 +5,7 @@ Python package + an agent skill, built on the
 [Post-Match-Report-2.0](https://github.com/adnaaan433/Post-Match-Report-2.0)
 blueprint.
 
-![Match report 1](docs/match_report_1_salzburg_rm.png)
+![Match report 1](docs/match_report_1_spain_argentina_wc2026.png)
 
 ## What it does
 
@@ -36,7 +36,7 @@ uv run playwright install chromium
 
 # 3. Scrape any match (WhoScored + FotMob merged)
 uv run football-match-report scrape \
-  "https://www.whoscored.com/matches/1873310/live/international-fifa-club-world-cup-2025-salzburg-real-madrid" \
+  "https://www.whoscored.com/matches/2007644/live/international-fifa-world-cup-2026-spain-argentina" \
   --out ./data
 
 # 4. Render the two report figures (offline)
