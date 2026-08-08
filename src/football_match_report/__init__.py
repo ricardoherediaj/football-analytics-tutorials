@@ -11,3 +11,10 @@ black background, shirt numbers inside player nodes, xT momentum, and a
 """
 
 __version__ = "2.0.0"
+
+# pandas >=3.0 has Copy-on-Write always on; older 2.x needs it enabled to avoid
+# chained-assignment warnings on plain column writes.
+import pandas as _pd
+
+if _pd.__version__.startswith("2."):
+    _pd.set_option("mode.copy_on_write", True)

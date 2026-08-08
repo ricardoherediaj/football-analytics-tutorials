@@ -55,8 +55,7 @@ def flatten_events(matchdict: dict) -> pd.DataFrame:
 
     df["type"] = df["type"].apply(display)
     df["outcomeType"] = df["outcomeType"].apply(display)
-    df["period"] = df["period"].apply(display)
-    df["period"] = df["period"].replace(
+    df["period"] = df["period"].apply(display).map(
         {"FirstHalf": 1, "SecondHalf": 2, "FirstPeriodOfExtraTime": 3,
          "SecondPeriodOfExtraTime": 4, "PenaltyShootout": 5,
          "PostGame": 14, "PreMatch": 16}
@@ -188,61 +187,49 @@ def insert_ball_carries(
 # --------------------------------------------------------------------------- #
 def add_possession_chains(events_df: pd.DataFrame, chain_check: int = 7, suc_evts_in_chain: int = 2) -> pd.DataFrame:
     """Assign possession_id / possession_team per event (blueprint logic)."""
-    df = events_df.copy().reset_index(drop=True)
-    if "teamBinary" not in df.columns:
-        teams = df["teamId"].unique()
-        df["teamBinary"] = df["teamId"].map({t: i for i, t in enumerate(teams)})
-    df["goalBinary"] = (df["type"] == "Goal").astype(int)
+    df = events_df.reset_index(drop=True).copy()
 
-    match_pos_events_df = df[["teamBinary", "goalBinary", "period", "teamName"]].copy()
-    pos_chain_df = pd.DataFrame(index=df.index)
+    teams = df["teamId"].unique()
+    team_binary = df["teamId"].map({t: i for i, t in enumerate(teams)})
+    goal_binary = (df["type"] == "Goal").astype(int)
+    period = pd.to_numeric(df["period"], errors="coerce")
 
+    # Check whether each event is followed by enough same-team events
+    same_team_cols = {}
     for n in np.arange(1, chain_check):
-        pos_chain_df[f"evt_{n}_same_team"] = abs(match_pos_events_df["teamBinary"].diff(periods=-n))
-        pos_chain_df[f"evt_{n}_same_team"] = pos_chain_df[f"evt_{n}_same_team"].apply(lambda x: 1 if x > 1 else x)
-    pos_chain_df["enough_evt_same_team"] = (
-        pos_chain_df.sum(axis=1).apply(lambda x: 1 if x < chain_check - suc_evts_in_chain else 0)
-    )
-    pos_chain_df["enough_evt_same_team"] = pos_chain_df["enough_evt_same_team"].diff(periods=1)
-    pos_chain_df.loc[pos_chain_df["enough_evt_same_team"] < 0, "enough_evt_same_team"] = 0
+        s = team_binary.diff(periods=-n).abs()
+        s = s.apply(lambda x: 1 if x > 1 else x)
+        same_team_cols[f"evt_{n}_same_team"] = s
+    enough = pd.DataFrame(same_team_cols, index=df.index).sum(axis=1)
+    enough = (enough < chain_check - suc_evts_in_chain).astype(int)
+    enough = enough.diff(periods=1).clip(lower=0)
 
-    match_pos_events_df["period"] = pd.to_numeric(match_pos_events_df["period"], errors="coerce")
-    pos_chain_df["upcoming_ko"] = 0
-    for ko in match_pos_events_df[
-        (match_pos_events_df["goalBinary"] == 1) | (match_pos_events_df["period"].diff(periods=1) != 0)
-    ].index.values:
-        ko_pos = match_pos_events_df.index.to_list().index(ko)
-        start = max(ko_pos - suc_evts_in_chain, 0)
-        pos_chain_df.iloc[start:ko_pos, pos_chain_df.columns.get_loc("upcoming_ko")] = 1
+    # No kick-offs (goal / period change) in the next few events
+    upcoming_ko = pd.Series(0, index=df.index, dtype=int)
+    ko_mask = (goal_binary == 1) | (period.diff(periods=1) != 0)
+    for ko in df.index[ko_mask.fillna(False)]:
+        ko_pos = df.index.get_loc(ko)
+        upcoming_ko.iloc[max(ko_pos - suc_evts_in_chain, 0):ko_pos] = 1
 
-    pos_chain_df["valid_pos_start"] = pos_chain_df.fillna(0)["enough_evt_same_team"] - pos_chain_df.fillna(0)["upcoming_ko"]
-    pos_chain_df["kick_off_period_change"] = match_pos_events_df["period"].diff(periods=1)
-    pos_chain_df["kick_off_goal"] = (
-        (match_pos_events_df["type"] == "Goal").astype(int).diff(periods=1).apply(lambda x: 1 if x < 0 else 0)
-    ) if "type" in match_pos_events_df else 0
-    pos_chain_df.loc[pos_chain_df["kick_off_period_change"] == 1, "valid_pos_start"] = 1
-    pos_chain_df.loc[pos_chain_df["kick_off_goal"] == 1, "valid_pos_start"] = 1
+    valid = (enough.fillna(0) - upcoming_ko.fillna(0)).astype(float)
+    kickoff_period = period.diff(periods=1)
+    kickoff_goal = goal_binary.diff(periods=1).apply(lambda x: 1 if x < 0 else 0)
+    valid[kickoff_period == 1] = 1
+    valid[kickoff_goal == 1] = 1
+    valid.iloc[0] = 1
 
-    pos_chain_df["teamName"] = match_pos_events_df["teamName"]
-    pos_chain_df.loc[pos_chain_df.head(1).index, "valid_pos_start"] = 1
-    pos_chain_df.loc[pos_chain_df.head(1).index, "possession_id"] = 1
-    pos_chain_df.loc[pos_chain_df.head(1).index, "possession_team"] = pos_chain_df.loc[
-        pos_chain_df.head(1).index, "teamName"
-    ]
+    possession_id = pd.Series(np.nan, index=df.index, dtype=float)
+    possession_team = pd.Series(index=df.index, dtype=object)
+    possession_id.iloc[0] = 1
+    possession_team.iloc[0] = df["teamName"].iloc[0]
 
-    valid_pos_start_id = pos_chain_df[pos_chain_df["valid_pos_start"] > 0].index
-    possession_id = 2
-    for i in range(1, len(valid_pos_start_id)):
-        row_id = valid_pos_start_id[i]
-        pos_chain_df.loc[row_id, "possession_id"] = possession_id
-        pos_chain_df.loc[row_id, "possession_team"] = pos_chain_df.loc[row_id, "teamName"]
-        possession_id += 1
+    valid_starts = df.index[valid > 0]
+    for pid, row in enumerate(valid_starts[1:], start=2):
+        possession_id.loc[row] = pid
+        possession_team.loc[row] = df.loc[row, "teamName"]
 
-    pos_chain_df[["possession_id", "possession_team"]] = pos_chain_df[["possession_id", "possession_team"]].ffill()
-    pos_chain_df[["possession_id", "possession_team"]] = pos_chain_df[["possession_id", "possession_team"]].bfill()
-
-    df["possession_id"] = pos_chain_df["possession_id"].values
-    df["possession_team"] = pos_chain_df["possession_team"].values
+    df["possession_id"] = possession_id.ffill().bfill()
+    df["possession_team"] = possession_team.ffill().bfill()
     return df
 
 
@@ -252,7 +239,7 @@ def add_possession_chains(events_df: pd.DataFrame, chain_check: int = 7, suc_evt
 def assign_xt(events_df: pd.DataFrame, xt_grid: np.ndarray) -> pd.DataFrame:
     """Assign start/end zone values and xT to Pass/Carry events (0-100 coords)."""
     df = events_df.copy()
-    dfxT = df[(~df["qualifiers"].str.contains("Corner", na=False))]
+    dfxT = df[(~df["qualifiers"].str.contains("Corner", na=False))].copy()
     dfxT = dfxT[(dfxT["type"].isin(["Pass", "Carry"])) & (dfxT["outcomeType"] == "Successful")].copy()
 
     xT_rows, xT_cols = xt_grid.shape

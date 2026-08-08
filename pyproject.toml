@@ -10,7 +10,7 @@ authors = [
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.24",
-    "pandas>=2.0",
+    "pandas>=2.3.3",  # 2.3.3 fixes spurious ChainedAssignmentError on plain column writes
     "matplotlib>=3.7",
     "scipy>=1.10",
     "requests>=2.31",
